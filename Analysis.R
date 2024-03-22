@@ -3,9 +3,11 @@ library(dplyr)
 library(ggplot2)
 library(scales)
 library(leaflet)
+library(shinyWidgets)
 
 # Read the CSV file
-data <- read.csv("th_new.csv")
+data <- read.csv("F:/NEU/2nd Quarter/ALY 6070/Assignment 3 Group/th_new.csv")
+data <- na.omit(data)
 
 # Define UI with a background image
 ui <- fluidPage(
@@ -23,24 +25,52 @@ ui <- fluidPage(
           position: relative;
           background-color: rgba(255, 255, 255, 0.75);
         }"
-      )
+     )
     )
   ),
   
   # Application title
   titlePanel("PortfolioFrontier: Exploring the Landscape of Investment"),
   
+  # Filters
+  fluidRow(
+    column(4,
+           sliderInput("slider1", label = h3("Sales"), min = min(data$sales), 
+                       max = max(data$sales), value = max(data$sales))
+    ),
+    column(4,sliderInput("slider2", label = h3("Listing"), min = min(data$listings), 
+                max = max(data$listings), value = c(0, max(data$listings)))
+           ),
+    
+  column(4,pickerInput(
+    inputId = "my_select_box",
+    label = "Select multiple Cities:",
+    choices = unique(c(data$city)),
+    multiple = TRUE,
+    options = list(`actions-box` = TRUE, `selected-text-format` = "count > 3")
+  )
+  )
+),
+  
+  hr(),
+  
   # Create tabs with an ID for the content area
   div(id = "contentArea", 
       tabsetPanel(
-        tabPanel("Dataset", tableOutput("csvTable")),
+        tabPanel("Dashboard",fluidRow(column(6, plotOutput("barPlot1_1")))),
         tabPanel("City Listings", plotOutput("barPlot1")),
-        tabPanel("Median Prices", plotOutput("barPlot4"),plotOutput("barPlot2")),
+        tabPanel("Median Prices",plotOutput("barPlot2"),plotOutput("barPlot4")),
         tabPanel("Yearly sales", plotOutput("barPlot3")),
-        tabPanel("Map", leafletOutput("map"))
+        tabPanel("Map", leafletOutput("map")),
+        tabPanel("Dataset", tableOutput("csvTable"))
       )
+  ),
+  fluidRow(
+    column(12, align = "center", h5("Project made by - Areeb Salsabil, Vatsal, Sujata & Muskan"))
   )
+  
 )
+
 
 # Define server logic
 server <- function(input, output) {
@@ -50,9 +80,30 @@ server <- function(input, output) {
     data
   })
   
+  # Filtered data based on slider input
+  filtered_data <- reactive({
+    filtered <- data
+    # Apply filter based on slider1
+    filtered <- filtered[filtered$sales <= input$slider1, ]
+    # Apply filter based on slider2
+    filtered <- filtered[filtered$listings >= input$slider2[1] & filtered$listings <= input$slider2[2], ]
+    # Apply filter based on pickerInput
+    if (!is.null(input$my_select_box)) {
+      filtered <- filtered[data$city %in% input$my_select_box, ]
+    }
+    return(filtered)
+  })
+  
+  # Render the filtered data
+  output$filteredTable <- renderTable({
+    filtered_data()
+  })
+
+  
+  
   # Plot the data for number of listings by city
   output$barPlot1 <- renderPlot({
-    data_by_city_1 <- data %>%
+    data_by_city_1 <- filtered_data() %>%
       group_by(city) %>%
       summarise(listings = sum(listings, na.rm = TRUE)) %>%
       arrange(desc(listings)) # Arrange by listings in descending order
@@ -77,6 +128,35 @@ server <- function(input, output) {
             plot.subtitle = element_text(hjust = 0.5),
             plot.caption = element_text(hjust = 1))
   })
+  
+  # Plot the data for number of listings by city (for Dashboard tab)
+  output$barPlot1_1 <- renderPlot({
+    data_by_city_1 <- filtered_data() %>%
+      group_by(city) %>%
+      summarise(listings = sum(listings, na.rm = TRUE)) %>%
+      arrange(desc(listings)) # Arrange by listings in descending order
+    
+    # Reorder the city factor levels based on listings
+    data_by_city_1$city <- factor(data_by_city_1$city, levels = data_by_city_1$city)
+    
+    # Create a bar chart for 'listings'
+    ggplot(data_by_city_1, aes(x=city, y=listings)) +
+      geom_bar(stat="identity", fill="deepskyblue4") +
+      labs(x = "City", 
+           y = "Number of Listings",
+           title = "Bar Chart of Number of Listings by City",
+           subtitle = "Comparison Across Cities",
+           caption = "Data: ALY-6070 dataset") +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 90, 
+                                       vjust = 1,
+                                       hjust = 1,
+                                       size = 9)) +
+      theme(plot.title = element_text(hjust = 0.5),
+            plot.subtitle = element_text(hjust = 0.5),
+            plot.caption = element_text(hjust = 1))
+  })
+  
   
   # Plot the data for median prices over time
   output$barPlot4 <- renderPlot({
@@ -176,7 +256,8 @@ server <- function(input, output) {
   })
   
   
+  
+  
 }
 # Run the application
 shinyApp(ui = ui, server = server)
-
