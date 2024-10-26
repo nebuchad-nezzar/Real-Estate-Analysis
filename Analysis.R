@@ -173,7 +173,7 @@ ui <- fluidPage(
       )
   ),
   fluidRow(
-    column(12, align = "center", h5("Project made by - Areeb Salsabil, Vatsal, Sujata & Muskan"))
+    column(12, align = "center", h5("Project made by - Vatsal Sharma and Areeb Salsabil "))
   )
 )
 
