@@ -78,7 +78,7 @@ ui <- fluidPage(
   ),
   
   # Application title
-  titlePanel(div(align = "center", "PortfolioFrontier: Exploring the Landscape of Investment")),
+  titlePanel(div(align = "center", "InvestLens: Where Data Meets Property Decisions")),
   
   # Filters
   fluidRow(
